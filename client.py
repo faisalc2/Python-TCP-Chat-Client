@@ -3,8 +3,8 @@ import threading
 import tkinter as tk
 from tkinter import simpledialog, scrolledtext, messagebox
 
-SERVER_HOST = "127.0.0.1"
-SERVER_PORT = 5555
+import ServerLoginDialog
+
 BUFFER_SIZE = 1024
 
 
@@ -12,10 +12,12 @@ class ChatClient:
     def __init__(self):
         self.sock = None
         self.username = None
+        self.server_host = None
+        self.server_port = None
 
         # connect and request username
         if not self.connect_and_login():
-            return  # Stop if failed to connect or login
+            return  # stop if fail
 
         # open chat window
         self.window = tk.Tk()
@@ -34,36 +36,44 @@ class ChatClient:
         self.window.mainloop()
 
     def connect_and_login(self):
+        root = tk.Tk()
+        root.withdraw()
+
+        login_dialog = ServerLoginDialog.ServerLoginDialog(root)
+        server_host, server_port, username = login_dialog.result
+
+        self.server_host = server_host
+        self.server_port = int(server_port)
+        self.username = username
+
+        # try to connect
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect((SERVER_HOST, SERVER_PORT))
+            self.sock.connect((self.server_host, self.server_port))
         except Exception as e:
             messagebox.showerror("Connection Failed", f"Could not connect: {e}")
             return False
 
-        # grab username prompt
+        # read welcome message
+        prompt_buffer = ""
         try:
-            prompt = self.sock.recv(BUFFER_SIZE).decode()
-        except:
-            messagebox.showerror("Error", "Failed to read from server.")
+            while "Enter username" not in prompt_buffer:
+                chunk = self.sock.recv(BUFFER_SIZE).decode()
+                if not chunk:
+                    messagebox.showerror("ERROR", "Server connection closed.")
+                    return False
+                prompt_buffer += chunk
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to read login prompt: {e}")
             return False
 
-        #  get username
-        root = tk.Tk()
-        root.withdraw()  # Hide small root window
-
-        self.username = simpledialog.askstring("Login", prompt)
-
-        if not self.username:
-            messagebox.showwarning("Login Failed", "You must enter a username.")
-            self.sock.close()
-            return False
 
         # send username
         try:
             self.sock.sendall((self.username + "\n").encode())
         except:
-            messagebox.showerror("Error", "Failed to send username to server.")
+            messagebox.showerror("Error", "Failed to send username.")
             return False
 
         root.destroy()
