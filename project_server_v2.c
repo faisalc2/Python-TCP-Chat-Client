@@ -10,11 +10,13 @@
 #define MAX_SIZE 80
 #define MAX_CLIENTS 15 // default client amount accepted by server
 #define MAX_CHAR_NAME 32 //default amount for username length
+#define MAX_SERVER_NAME 64
 
 int client_sockets[MAX_CLIENTS]; // Array to keep track of users
 pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char usernames[MAX_CLIENTS][MAX_CHAR_NAME];
+char server_name[MAX_SERVER_NAME];
 
 void server_messager(int clientfd, const char *msg, int len){ //Function for server to send user message to users
 pthread_mutex_lock(&client_mutex);
@@ -55,6 +57,11 @@ if(slot == -1){
     close(clientfd);
     return NULL;
 }
+
+/* Notify the user about the server they're joining */
+char welcome_msg[128];
+snprintf(welcome_msg, sizeof(welcome_msg), "Welcome to the %s\n", server_name);
+write(clientfd, welcome_msg, strlen(welcome_msg));
 
 /*Prompt for user to enter username*/
 const char *prompt = "Enter username: ";
@@ -151,6 +158,22 @@ if (argc == 2){
 }
 else {
     port = SERV_TCP_PORT;
+}
+
+printf("Enter server name: ");
+fflush(stdout);
+if (!fgets(server_name, sizeof(server_name), stdin)) {
+    strncpy(server_name, "Server", sizeof(server_name));
+    server_name[sizeof(server_name) - 1] = '\0';
+} else {
+    char *p = strchr(server_name, '\n');
+    if (p) {
+        *p = '\0';
+    }
+    if (server_name[0] == '\0') {
+        strncpy(server_name, "Server", sizeof(server_name));
+        server_name[sizeof(server_name) - 1] = '\0';
+    }
 }
 
 /* open TCP socket (Internet Stream Socket) */
