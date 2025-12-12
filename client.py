@@ -33,6 +33,9 @@ class ChatClient:
         self.entry.pack(padx=10, pady=(0, 10), fill=tk.X)
         self.entry.bind("<Return>", self.send_message)
 
+
+        # connection message in chat
+        self.add_text(f"Connected to the chat.\n", tag="server")
         # thread to listen
         threading.Thread(target=self.receive_messages, daemon=True).start()
 
@@ -72,6 +75,7 @@ class ChatClient:
             return False
 
 
+        
         # send username
         try:
             self.sock.sendall((self.username + "\n").encode())
