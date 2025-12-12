@@ -153,6 +153,25 @@ class ChatClient:
                 break
 
         self.add_text("[Disconnected from server]\n", tag="server")
+        self.window.after(0, self.show_disconnect_popup())
+        exit(0)
+
+    def show_disconnect_popup(self):
+        popup = tk.Toplevel(self.window)
+        popup.title("Disconnected")
+
+        popup.geometry("300x120")
+        popup.resizable(False, False)
+
+        label = tk.Label(popup, text="Disconnected from server", font = ("Arial", 12))
+        label.pack(pady=15)
+
+        quit_button = tk.Button(popup, text="Quit", font=("Arial", 12), command=self.window.quit)
+
+        quit_button.pack(pady=5)
+
+        popup.transient(self.window) 
+        popup.grab_set()
 
 
 if __name__ == "__main__":
