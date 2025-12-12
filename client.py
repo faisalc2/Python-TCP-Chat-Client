@@ -25,6 +25,9 @@ class ChatClient:
 
         self.chat_area = scrolledtext.ScrolledText(self.window, wrap=tk.WORD, state="disabled")
         self.chat_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+        self.chat_area.tag_config("self", foreground="blue")
+        self.chat_area.tag_config("server", foreground="black")
+        self.chat_area.tag_config("user", foreground="green")
 
         self.entry = tk.Entry(self.window, font=("Arial", 12))
         self.entry.pack(padx=10, pady=(0, 10), fill=tk.X)
@@ -79,13 +82,17 @@ class ChatClient:
         root.destroy()
         return True
 
-    def add_text(self, msg):
+    def add_text(self, msg, tag=None):
         self.chat_area.config(state="normal")
-        self.chat_area.insert(tk.END, msg)
+        if tag:
+            self.chat_area.insert(tk.END, msg, tag)
+        else:
+            self.chat_area.insert(tk.END, msg)
         self.chat_area.config(state="disabled")
         self.chat_area.yview(tk.END)
 
     def send_message(self, event=None):
+        
         msg = self.entry.get().strip()
         if not msg:
             return
@@ -96,20 +103,52 @@ class ChatClient:
             self.add_text("[Error sending message]\n")
             return
 
-        self.add_text(f"You: {msg}\n")
+        self.add_text(f"You: {msg}\n", tag="self")
         self.entry.delete(0, tk.END)
 
     def receive_messages(self):
+        buffer = ""
+
         while True:
             try:
                 data = self.sock.recv(BUFFER_SIZE)
-                if not data:
+
+                # socket close
+                if data == b"":
+                    self.add_text("[Server closed connection]\n", "server")
                     break
-                self.add_text(data.decode())
+                
+                chunk = data.decode(errors="ignore")
+                buffer += chunk
+
+                # examine full lines
+                while "\n" in buffer:
+                    text, buffer = buffer.split("\n", 1)
+                    text = text.strip()
+
+                    if not text:
+                        continue 
+
+                    # find username prefix
+                    if ":" in text:
+                        sender, msg = text.split(":", 1)
+                        sender = sender.strip()
+                        msg = msg.strip()
+
+                        if sender.lower() == "server":
+                            self.add_text(f"{sender}: {msg}\n", tag="server")
+                        elif sender == self.username:
+                            self.add_text(f"{sender}: {msg}\n", tag="self")
+                        else:
+                            self.add_text(f"{sender}: {msg}\n", tag="user")
+                    else:
+                        # no username (raw text) (???)
+                        self.add_text(text + "\n")              
+            
             except:
                 break
 
-        self.add_text("[Disconnected from server]\n")
+        self.add_text("[Disconnected from server]\n", tag="server")
 
 
 if __name__ == "__main__":
